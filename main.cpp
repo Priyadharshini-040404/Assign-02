@@ -30,7 +30,6 @@ bool valid_date_format(const std::string& date) {
     std::string month_str = date.substr(3, 2);
     std::string year_str = date.substr(6, 4);
 
-    // Ensure all characters are digits
     for (char ch : day_str + month_str + year_str) {
         if (!isdigit(ch)) return false;
     }
@@ -38,21 +37,47 @@ bool valid_date_format(const std::string& date) {
     int day = std::stoi(day_str);
     int month = std::stoi(month_str);
     int year = std::stoi(year_str);
+
     if (year < 1950 || year > 2050) return false;
     if (month < 1 || month > 12) return false;
+
     int max_day[] = {31,28,31,30,31,30,31,31,30,31,30,31};
     if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
         max_day[1] = 29;
+
     return day >= 1 && day <= max_day[month - 1];
 }
 
-// Convert date from DD/MM/YYYY to YYYY-MM-DD (for sorting)
+// Convert date from DD/MM/YYYY to YYYY-MM-DD for sorting
 std::string convert_date_format(const std::string& date) {
-    // date format: DD/MM/YYYY
     std::string day = date.substr(0,2);
     std::string month = date.substr(3,2);
     std::string year = date.substr(6,4);
     return year + "-" + month + "-" + day;
+}
+
+// Display all sales in table format
+void display_sales(const std::vector<Sale>& sales) {
+    std::cout << "\nCurrent Sales Records:\n";
+    std::cout << std::left
+              << std::setw(12) << "Date"
+              << std::setw(20) << "Sales ID"
+              << std::setw(20) << "Item Name"
+              << std::setw(12) << "Quantity"
+              << std::setw(12) << "Unit Price"
+              << "\n";
+    std::cout << std::string(76, '-') << "\n";
+
+    for (const auto& sale : sales) {
+        std::cout << std::left
+                  << std::setw(12) << sale.date
+                  << std::setw(20) << sale.sales_id
+                  << std::setw(20) << sale.item_name
+                  << std::setw(12) << sale.item_quantity
+                  << std::setw(12) << std::fixed << std::setprecision(2) << sale.unit_price
+                  << "\n";
+    }
+    std::cout << std::string(76, '-') << "\n\n";
 }
 
 void append_to_sales_file(const std::string& filename, const Sale& sale, bool write_header = false) {
@@ -106,6 +131,7 @@ void write_sales_to_file(const std::string& filename, const std::vector<Sale>& s
 Sale get_sale_input(const std::string& sales_id = "") {
     Sale new_sale;
     std::string input;
+
     while (true) {
         std::cout << "Enter date (DD/MM/YYYY): ";
         std::getline(std::cin, new_sale.date);
@@ -158,7 +184,7 @@ void sort_and_save_temp(const std::vector<Sale>& sales) {
     std::cout << "Sorted data written to temp.csv\n";
 }
 
-// Get today's date in YYYY-MM-DD format for report header
+// Get today's date in DD-MM-YYYY format for report header
 std::string get_today_date() {
     std::time_t t = std::time(nullptr);
     std::tm* now = std::localtime(&t);
@@ -173,10 +199,10 @@ void generate_report(const std::vector<Sale>& sales) {
         std::cerr << "Error opening report.txt for writing.\n";
         return;
     }
+
     report << "Date: " << get_today_date() << "\n";
     report << "Sales Report : Stationary Items Sold\n\n";
 
-    // Group sales by date (convert dates to YYYY-MM-DD for consistent grouping)
     std::map<std::string, std::vector<Sale>> sales_by_date;
     for (const auto& s : sales) {
         std::string d = convert_date_format(s.date);
@@ -244,6 +270,8 @@ int main() {
     std::cout << "Do you want to make any changes in the inputs? (y/n): ";
     std::getline(std::cin, update_choice);
     if (update_choice == "y" || update_choice == "Y") {
+        display_sales(all_sales);  // <-- SHOW RECORDS
+
         std::string target_id;
         std::cout << "Enter the Sales ID to update: ";
         std::getline(std::cin, target_id);
@@ -269,8 +297,9 @@ int main() {
     std::string delete_choice;
     std::cout << "Do you want to delete any record? (y/n): ";
     std::getline(std::cin, delete_choice);
-
     if (delete_choice == "y" || delete_choice == "Y") {
+        display_sales(all_sales);  // <-- SHOW RECORDS
+
         std::string delete_id;
         std::cout << "Enter the Sales ID to delete: ";
         std::getline(std::cin, delete_id);
@@ -287,9 +316,9 @@ int main() {
             std::cerr << "Sales ID not found.\n";
         }
     }
-    sort_and_save_temp(all_sales);
 
-    // Generate report.txt after all operations
+    sort_and_save_temp(all_sales);
     generate_report(all_sales);
+
     return 0;
 }
