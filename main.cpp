@@ -6,9 +6,10 @@
 #include <iomanip>
 #include <filesystem>
 #include <algorithm>
+#include <cctype>
 
 struct Sale {
-    std::string date;
+    std::string date; // DD/MM/YYYY
     std::string sales_id;
     std::string item_name;
     int item_quantity;
@@ -21,66 +22,43 @@ std::string generate_sales_id() {
     return "SID" + std::to_string(t);
 }
 
-// Check if date format is valid
-// Check if date format is valid (DD/MM/YY)
+// Validate DD/MM/YYYY format and year range
 bool valid_date_format(const std::string& date) {
-    if (date.size() != 8) return false;
-    if (date[2] != '/' || date[5] != '/') return false;
+    if (date.length() != 10 || date[2] != '/' || date[5] != '/') return false;
 
-    std::string day = date.substr(0, 2);
-    std::string month = date.substr(3, 2);
-    std::string year = date.substr(6, 2);
+    std::string day_str = date.substr(0, 2);
+    std::string month_str = date.substr(3, 2);
+    std::string year_str = date.substr(6, 4);
 
-    // Check all are digits
-    if (!std::isdigit(day[0]) || !std::isdigit(day[1]) ||
-        !std::isdigit(month[0]) || !std::isdigit(month[1]) ||
-        !std::isdigit(year[0]) || !std::isdigit(year[1]))
-        return false;
+    // Ensure all characters are digits
+    for (char ch : day_str + month_str + year_str) {
+        if (!isdigit(ch)) return false;
+    }
 
-    int d = std::stoi(day);
-    int m = std::stoi(month);
+    int day = std::stoi(day_str);
+    int month = std::stoi(month_str);
+    int year = std::stoi(year_str);
 
-    return d >= 1 && d <= 31 && m >= 1 && m <= 12;
-}
-// Check if date format is valid (DD/MM/YY)
-bool valid_date_format(const std::string& date) {
-    if (date.size() != 8) return false;
-    if (date[2] != '/' || date[5] != '/') return false;
+    if (year < 1950 || year > 2050) return false;
+    if (month < 1 || month > 12) return false;
 
-    std::string day = date.substr(0, 2);
-    std::string month = date.substr(3, 2);
-    std::string year = date.substr(6, 2);
+    int max_day[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
+        max_day[1] = 29;
 
-    // Check all are digits
-    if (!std::isdigit(day[0]) || !std::isdigit(day[1]) ||
-        !std::isdigit(month[0]) || !std::isdigit(month[1]) ||
-        !std::isdigit(year[0]) || !std::isdigit(year[1]))
-        return false;
-
-    int d = std::stoi(day);
-    int m = std::stoi(month);
-
-    return d >= 1 && d <= 31 && m >= 1 && m <= 12;
-}
+    return day >= 1 && day <= max_day[month - 1];
 }
 
-// Append new sale to sales.csv
 void append_to_sales_file(const std::string& filename, const Sale& sale, bool write_header = false) {
-    std::ofstream file;
-    file.open(filename, std::ios::app); // append mode
-
+    std::ofstream file(filename, std::ios::app);
     if (write_header) {
         file << "date,sales_id,item_name,item_quantity,unit_price\n";
     }
-
     file << sale.date << "," << sale.sales_id << "," << sale.item_name << ","
-         << sale.item_quantity << "," << std::fixed << std::setprecision(2)
-         << sale.unit_price << "\n";
-
+         << sale.item_quantity << "," << std::fixed << std::setprecision(2) << sale.unit_price << "\n";
     file.close();
 }
 
-// Read all sales from CSV
 std::vector<Sale> read_sales_file(const std::string& filename) {
     std::vector<Sale> sales;
     std::ifstream file(filename);
@@ -108,38 +86,31 @@ std::vector<Sale> read_sales_file(const std::string& filename) {
     return sales;
 }
 
-// Write all sales to file (overwrite)
 void write_sales_to_file(const std::string& filename, const std::vector<Sale>& sales) {
     std::ofstream file(filename);
     file << "date,sales_id,item_name,item_quantity,unit_price\n";
-
     for (const auto& sale : sales) {
         file << sale.date << "," << sale.sales_id << "," << sale.item_name << ","
              << sale.item_quantity << "," << std::fixed << std::setprecision(2)
              << sale.unit_price << "\n";
     }
-
     file.close();
 }
 
-// Get user input for a sale (reused for add/edit)
 Sale get_sale_input(const std::string& sales_id = "") {
     Sale new_sale;
     std::string input;
 
-    // Input and validate date
     while (true) {
-        std::cout << "Enter date (YYYY-MM-DD): ";
+        std::cout << "Enter date (DD/MM/YYYY): ";
         std::getline(std::cin, new_sale.date);
         if (valid_date_format(new_sale.date)) break;
-        std::cerr << "Invalid date format. Please enter in YYYY-MM-DD.\n";
+        std::cerr << "Invalid input. Please enter in DD/MM/YYYY format (Year: 1950 to 2050).\n";
     }
 
-    // Item name
     std::cout << "Enter item name: ";
     std::getline(std::cin, new_sale.item_name);
 
-    // Quantity
     while (true) {
         std::cout << "Enter item quantity: ";
         std::getline(std::cin, input);
@@ -151,7 +122,6 @@ Sale get_sale_input(const std::string& sales_id = "") {
         }
     }
 
-    // Unit price
     while (true) {
         std::cout << "Enter unit price: ";
         std::getline(std::cin, input);
@@ -167,43 +137,44 @@ Sale get_sale_input(const std::string& sales_id = "") {
     return new_sale;
 }
 
-// Sort and write to temp.csv
 void sort_and_save_temp(const std::vector<Sale>& sales) {
-    std::vector<Sale> sorted_sales = sales;
+    std::vector<Sale> sorted = sales;
 
-    std::sort(sorted_sales.begin(), sorted_sales.end(), [](const Sale& a, const Sale& b) {
-        return a.date < b.date;
+    std::sort(sorted.begin(), sorted.end(), [](const Sale& a, const Sale& b) {
+        auto to_date_num = [](const std::string& d) {
+            int day = std::stoi(d.substr(0, 2));
+            int month = std::stoi(d.substr(3, 2));
+            int year = std::stoi(d.substr(6, 4));
+            return year * 10000 + month * 100 + day;
+        };
+        return to_date_num(a.date) < to_date_num(b.date);
     });
 
-    const std::string temp_file = "temp.csv";
-    write_sales_to_file(temp_file, sorted_sales);
-    std::cout << "Sorted data written to " << temp_file << "\n";
+    write_sales_to_file("temp.csv", sorted);
+    std::cout << "Sorted data written to temp.csv\n";
 }
 
 int main() {
     const std::string filename = "sales.csv";
     std::string choice;
 
-    bool file_exists = std::filesystem::exists(filename);
-    if (!file_exists) {
+    if (!std::filesystem::exists(filename)) {
         std::ofstream file(filename);
         file << "date,sales_id,item_name,item_quantity,unit_price\n";
         file.close();
     }
 
-    // Step 1: Add new sales
     do {
         Sale new_sale = get_sale_input();
         append_to_sales_file(filename, new_sale);
         std::cout << "Record added successfully.\n";
-
         std::cout << "Do you want to enter another record? (y/n): ";
         std::getline(std::cin, choice);
     } while (choice == "y" || choice == "Y");
 
     std::vector<Sale> all_sales = read_sales_file(filename);
 
-    // Step 2: Ask if update is needed
+    // Update
     std::string update_choice;
     std::cout << "Do you want to make any changes in the inputs? (y/n): ";
     std::getline(std::cin, update_choice);
@@ -216,7 +187,6 @@ int main() {
         bool found = false;
         for (auto& sale : all_sales) {
             if (sale.sales_id == target_id) {
-                std::cout << "Enter new details for Sales ID " << target_id << ":\n";
                 sale = get_sale_input(target_id);
                 found = true;
                 break;
@@ -231,7 +201,7 @@ int main() {
         }
     }
 
-    // Step 3: Ask if deletion is needed
+    // Delete
     std::string delete_choice;
     std::cout << "Do you want to delete any record? (y/n): ";
     std::getline(std::cin, delete_choice);
@@ -254,7 +224,8 @@ int main() {
         }
     }
 
-    // Step 4: Sort and save to temp.csv
     sort_and_save_temp(all_sales);
+
+    std::cout << "Program completed.\n";
     return 0;
 }
