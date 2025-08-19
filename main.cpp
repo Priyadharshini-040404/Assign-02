@@ -169,9 +169,10 @@ std::string get_today_date() {
     std::time_t t = std::time(nullptr);
     std::tm* now = std::localtime(&t);
     std::ostringstream oss;
-    oss << std::put_time(now, "%Y-%m-%d");
+    oss << std::put_time(now, "%d-%m-%Y");
     return oss.str();
 }
+
 
 void generate_report(const std::vector<Sale>& sales) {
     std::ofstream report("report.txt");
