@@ -22,8 +22,46 @@ std::string generate_sales_id() {
 }
 
 // Check if date format is valid
+// Check if date format is valid (DD/MM/YY)
 bool valid_date_format(const std::string& date) {
-    return date.size() == 10 && date[4] == '-' && date[7] == '-';
+    if (date.size() != 8) return false;
+    if (date[2] != '/' || date[5] != '/') return false;
+
+    std::string day = date.substr(0, 2);
+    std::string month = date.substr(3, 2);
+    std::string year = date.substr(6, 2);
+
+    // Check all are digits
+    if (!std::isdigit(day[0]) || !std::isdigit(day[1]) ||
+        !std::isdigit(month[0]) || !std::isdigit(month[1]) ||
+        !std::isdigit(year[0]) || !std::isdigit(year[1]))
+        return false;
+
+    int d = std::stoi(day);
+    int m = std::stoi(month);
+
+    return d >= 1 && d <= 31 && m >= 1 && m <= 12;
+}
+// Check if date format is valid (DD/MM/YY)
+bool valid_date_format(const std::string& date) {
+    if (date.size() != 8) return false;
+    if (date[2] != '/' || date[5] != '/') return false;
+
+    std::string day = date.substr(0, 2);
+    std::string month = date.substr(3, 2);
+    std::string year = date.substr(6, 2);
+
+    // Check all are digits
+    if (!std::isdigit(day[0]) || !std::isdigit(day[1]) ||
+        !std::isdigit(month[0]) || !std::isdigit(month[1]) ||
+        !std::isdigit(year[0]) || !std::isdigit(year[1]))
+        return false;
+
+    int d = std::stoi(day);
+    int m = std::stoi(month);
+
+    return d >= 1 && d <= 31 && m >= 1 && m <= 12;
+}
 }
 
 // Append new sale to sales.csv
