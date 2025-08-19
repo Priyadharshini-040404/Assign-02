@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <cctype>
+#include <map>
 
 struct Sale {
     std::string date; // DD/MM/YYYY
@@ -47,6 +48,15 @@ bool valid_date_format(const std::string& date) {
         max_day[1] = 29;
 
     return day >= 1 && day <= max_day[month - 1];
+}
+
+// Convert date from DD/MM/YYYY to YYYY-MM-DD (for sorting and report)
+std::string convert_date_format(const std::string& date) {
+    // date format: DD/MM/YYYY
+    std::string day = date.substr(0,2);
+    std::string month = date.substr(3,2);
+    std::string year = date.substr(6,4);
+    return year + "-" + month + "-" + day;
 }
 
 void append_to_sales_file(const std::string& filename, const Sale& sale, bool write_header = false) {
@@ -154,6 +164,70 @@ void sort_and_save_temp(const std::vector<Sale>& sales) {
     std::cout << "Sorted data written to temp.csv\n";
 }
 
+// Get today's date in YYYY-MM-DD format for report header
+std::string get_today_date() {
+    std::time_t t = std::time(nullptr);
+    std::tm* now = std::localtime(&t);
+    std::ostringstream oss;
+    oss << std::put_time(now, "%Y-%m-%d");
+    return oss.str();
+}
+
+void generate_report(const std::vector<Sale>& sales) {
+    std::ofstream report("report.txt");
+    if (!report) {
+        std::cerr << "Error opening report.txt for writing.\n";
+        return;
+    }
+
+    report << "Date: " << get_today_date() << "\n";
+    report << "Sales Report : Stationary Items Sold\n\n";
+
+    // Group sales by date (convert dates to YYYY-MM-DD for consistent grouping)
+    std::map<std::string, std::vector<Sale>> sales_by_date;
+    for (const auto& s : sales) {
+        std::string d = convert_date_format(s.date);
+        sales_by_date[d].push_back(s);
+    }
+
+    double grand_total = 0.0;
+    const std::string line_sep = std::string(100, '-');
+
+    for (const auto& [date, sales_vec] : sales_by_date) {
+        report << line_sep << "\n\n";
+        report << "Date                SaleID             ItemName        Quantity     Price          SalesAmount \n\n";
+        report << line_sep << "\n\n";
+
+        double subtotal = 0.0;
+        for (const auto& sale : sales_vec) {
+            double sales_amount = sale.item_quantity * sale.unit_price;
+            subtotal += sales_amount;
+
+            report << std::left
+                   << std::setw(18) << date
+                   << std::setw(18) << sale.sales_id
+                   << std::setw(16) << sale.item_name
+                   << std::setw(12) << sale.item_quantity
+                   << std::setw(14) << std::fixed << std::setprecision(2) << sale.unit_price
+                   << std::fixed << std::setprecision(2) << sales_amount
+                   << "\n";
+        }
+
+        report << "\n" << line_sep << "\n\n";
+        report << std::setw(70) << " " << "Subtotal for " << date << " is :" << subtotal << "\n\n";
+        report << line_sep << "\n\n";
+
+        grand_total += subtotal;
+    }
+
+    report << std::setw(70) << " " << "GRAND TOTAL is : " << grand_total << "\n\n";
+    report << "Submission\n";
+    report << "End of Report\n";
+
+    report.close();
+    std::cout << "Report generated successfully in report.txt\n";
+}
+
 int main() {
     const std::string filename = "sales.csv";
     std::string choice;
@@ -225,6 +299,9 @@ int main() {
     }
 
     sort_and_save_temp(all_sales);
+
+    // Generate report.txt after all operations
+    generate_report(all_sales);
 
     std::cout << "Program completed.\n";
     return 0;
