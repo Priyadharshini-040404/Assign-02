@@ -303,7 +303,5 @@ int main() {
 
     // Generate report.txt after all operations
     generate_report(all_sales);
-
-    std::cout << "Program completed.\n";
     return 0;
 }
