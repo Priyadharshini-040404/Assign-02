@@ -128,6 +128,21 @@ void write_sales_to_file(const std::string& filename, const std::vector<Sale>& s
     file.close();
 }
 
+//  Function for valid yes/no input
+char getYesNo(const std::string& prompt) {
+    while (true) {
+        std::cout << prompt;
+        std::string input;
+        std::getline(std::cin, input);
+
+        if (input.size() == 1 && (input[0] == 'y' || input[0] == 'Y' || input[0] == 'n' || input[0] == 'N')) {
+            return input[0];
+        } else {
+            std::cerr << "Invalid input. Please enter only 'y' or 'n'.\n";
+        }
+    }
+}
+
 Sale get_sale_input(const std::string& sales_id = "") {
     Sale new_sale;
     std::string input;
@@ -240,14 +255,12 @@ void generate_report(const std::vector<Sale>& sales) {
 
     report << std::setw(70) << " " << "GRAND TOTAL is : " << grand_total << "\n\n";
     report << "Submission\n";
-    report << "End of Report\n";
     report.close();
     std::cout << "Report generated successfully in report.txt\n";
 }
 
 int main() {
     const std::string filename = "sales.csv";
-    std::string choice;
 
     if (!std::filesystem::exists(filename)) {
         std::ofstream file(filename);
@@ -259,18 +272,14 @@ int main() {
         Sale new_sale = get_sale_input();
         append_to_sales_file(filename, new_sale);
         std::cout << "Record added successfully.\n";
-        std::cout << "Do you want to enter another record? (y/n): ";
-        std::getline(std::cin, choice);
-    } while (choice == "y" || choice == "Y");
+    } while (getYesNo("Do you want to enter another record? (y/n): ") == 'y');
 
     std::vector<Sale> all_sales = read_sales_file(filename);
 
     // Update
-    std::string update_choice;
-    std::cout << "Do you want to make any changes in the inputs? (y/n): ";
-    std::getline(std::cin, update_choice);
-    if (update_choice == "y" || update_choice == "Y") {
-        display_sales(all_sales);  // <-- SHOW RECORDS
+    char update_choice = getYesNo("Do you want to make any changes in the inputs? (y/n): ");
+    if (update_choice == 'y' || update_choice == 'Y') {
+        display_sales(all_sales);
 
         std::string target_id;
         std::cout << "Enter the Sales ID to update: ";
@@ -294,11 +303,9 @@ int main() {
     }
 
     // Delete
-    std::string delete_choice;
-    std::cout << "Do you want to delete any record? (y/n): ";
-    std::getline(std::cin, delete_choice);
-    if (delete_choice == "y" || delete_choice == "Y") {
-        display_sales(all_sales);  // <-- SHOW RECORDS
+    char delete_choice = getYesNo("Do you want to delete any record? (y/n): ");
+    if (delete_choice == 'y' || delete_choice == 'Y') {
+        display_sales(all_sales);
 
         std::string delete_id;
         std::cout << "Enter the Sales ID to delete: ";
