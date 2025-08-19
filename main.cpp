@@ -163,12 +163,12 @@ int main() {
         std::getline(std::cin, choice);
     } while (choice == "y" || choice == "Y");
 
-    // Step 2: Ask if any updates are needed
+    std::vector<Sale> all_sales = read_sales_file(filename);
+
+    // Step 2: Ask if update is needed
     std::string update_choice;
     std::cout << "Do you want to make any changes in the inputs? (y/n): ";
     std::getline(std::cin, update_choice);
-
-    std::vector<Sale> all_sales = read_sales_file(filename);
 
     if (update_choice == "y" || update_choice == "Y") {
         std::string target_id;
@@ -179,7 +179,7 @@ int main() {
         for (auto& sale : all_sales) {
             if (sale.sales_id == target_id) {
                 std::cout << "Enter new details for Sales ID " << target_id << ":\n";
-                sale = get_sale_input(target_id);  // Keep the same Sales ID
+                sale = get_sale_input(target_id);
                 found = true;
                 break;
             }
@@ -187,15 +187,36 @@ int main() {
 
         if (found) {
             write_sales_to_file(filename, all_sales);
-            std::cout << "Sales ID " << target_id << " updated successfully in " << filename << "\n";
+            std::cout << "Sales ID " << target_id << " updated successfully.\n";
         } else {
-            std::cerr << "Sales ID not found!\n";
+            std::cerr << "Sales ID not found.\n";
         }
     }
 
-    // Step 3: Sort all and write to temp.csv
-    sort_and_save_temp(all_sales);
+    // Step 3: Ask if deletion is needed
+    std::string delete_choice;
+    std::cout << "Do you want to delete any record? (y/n): ";
+    std::getline(std::cin, delete_choice);
 
-    std::cout << "Program completed.\n";
+    if (delete_choice == "y" || delete_choice == "Y") {
+        std::string delete_id;
+        std::cout << "Enter the Sales ID to delete: ";
+        std::getline(std::cin, delete_id);
+
+        auto original_size = all_sales.size();
+        all_sales.erase(std::remove_if(all_sales.begin(), all_sales.end(),
+            [&](const Sale& s) { return s.sales_id == delete_id; }),
+            all_sales.end());
+
+        if (all_sales.size() < original_size) {
+            write_sales_to_file(filename, all_sales);
+            std::cout << "Sales ID " << delete_id << " deleted successfully.\n";
+        } else {
+            std::cerr << "Sales ID not found.\n";
+        }
+    }
+
+    // Step 4: Sort and save to temp.csv
+    sort_and_save_temp(all_sales);
     return 0;
 }
