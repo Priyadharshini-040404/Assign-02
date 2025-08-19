@@ -27,12 +27,11 @@ bool valid_date_format(const std::string& date) {
 }
 
 // Append new sale to sales.csv
-void append_to_sales_file(const std::string& filename, const Sale& sale) {
+void append_to_sales_file(const std::string& filename, const Sale& sale, bool write_header = false) {
     std::ofstream file;
-    bool file_exists = std::filesystem::exists(filename);
     file.open(filename, std::ios::app); // append mode
 
-    if (!file_exists) {
+    if (write_header) {
         file << "date,sales_id,item_name,item_quantity,unit_price\n";
     }
 
@@ -43,12 +42,12 @@ void append_to_sales_file(const std::string& filename, const Sale& sale) {
     file.close();
 }
 
-// Read all records from sales.csv into a vector
+// Read all sales from CSV
 std::vector<Sale> read_sales_file(const std::string& filename) {
     std::vector<Sale> sales;
     std::ifstream file(filename);
     std::string line;
-    std::getline(file, line); // Skip header
+    std::getline(file, line); // skip header
 
     while (std::getline(file, line)) {
         std::stringstream ss(line);
@@ -71,8 +70,8 @@ std::vector<Sale> read_sales_file(const std::string& filename) {
     return sales;
 }
 
-// Write sorted sales data to temp.csv
-void write_sorted_sales(const std::vector<Sale>& sales, const std::string& filename) {
+// Write all sales to file (overwrite)
+void write_sales_to_file(const std::string& filename, const std::vector<Sale>& sales) {
     std::ofstream file(filename);
     file << "date,sales_id,item_name,item_quantity,unit_price\n";
 
@@ -85,83 +84,117 @@ void write_sorted_sales(const std::vector<Sale>& sales, const std::string& filen
     file.close();
 }
 
+// Get user input for a sale (reused for add/edit)
+Sale get_sale_input(const std::string& sales_id = "") {
+    Sale new_sale;
+    std::string input;
+
+    // Input and validate date
+    while (true) {
+        std::cout << "Enter date (YYYY-MM-DD): ";
+        std::getline(std::cin, new_sale.date);
+        if (valid_date_format(new_sale.date)) break;
+        std::cerr << "Invalid date format. Please enter in YYYY-MM-DD.\n";
+    }
+
+    // Item name
+    std::cout << "Enter item name: ";
+    std::getline(std::cin, new_sale.item_name);
+
+    // Quantity
+    while (true) {
+        std::cout << "Enter item quantity: ";
+        std::getline(std::cin, input);
+        try {
+            new_sale.item_quantity = std::stoi(input);
+            break;
+        } catch (...) {
+            std::cerr << "Invalid quantity. Please enter a valid integer.\n";
+        }
+    }
+
+    // Unit price
+    while (true) {
+        std::cout << "Enter unit price: ";
+        std::getline(std::cin, input);
+        try {
+            new_sale.unit_price = std::stod(input);
+            break;
+        } catch (...) {
+            std::cerr << "Invalid price. Please enter a valid number.\n";
+        }
+    }
+
+    new_sale.sales_id = sales_id.empty() ? generate_sales_id() : sales_id;
+    return new_sale;
+}
+
+// Sort and write to temp.csv
+void sort_and_save_temp(const std::vector<Sale>& sales) {
+    std::vector<Sale> sorted_sales = sales;
+
+    std::sort(sorted_sales.begin(), sorted_sales.end(), [](const Sale& a, const Sale& b) {
+        return a.date < b.date;
+    });
+
+    const std::string temp_file = "temp.csv";
+    write_sales_to_file(temp_file, sorted_sales);
+    std::cout << "Sorted data written to " << temp_file << "\n";
+}
+
 int main() {
     const std::string filename = "sales.csv";
     std::string choice;
 
+    bool file_exists = std::filesystem::exists(filename);
+    if (!file_exists) {
+        std::ofstream file(filename);
+        file << "date,sales_id,item_name,item_quantity,unit_price\n";
+        file.close();
+    }
+
+    // Step 1: Add new sales
     do {
-        Sale new_sale;
-        std::string input;
-
-        // Input and validate date
-        while (true) {
-            std::cout << "Enter date (YYYY-MM-DD): ";
-            std::getline(std::cin, new_sale.date);
-            if (valid_date_format(new_sale.date)) break;
-            std::cerr << "Invalid date format. Please enter in YYYY-MM-DD.\n";
-        }
-
-        // Input item name
-        std::cout << "Enter item name: ";
-        std::getline(std::cin, new_sale.item_name);
-
-        // Input and validate item quantity
-        while (true) {
-            std::cout << "Enter item quantity: ";
-            std::getline(std::cin, input);
-            try {
-                new_sale.item_quantity = std::stoi(input);
-                break;
-            } catch (...) {
-                std::cerr << "Invalid quantity. Please enter a valid integer.\n";
-            }
-        }
-
-        // Input and validate unit price
-        while (true) {
-            std::cout << "Enter unit price: ";
-            std::getline(std::cin, input);
-            try {
-                new_sale.unit_price = std::stod(input);
-                break;
-            } catch (...) {
-                std::cerr << "Invalid price. Please enter a valid number.\n";
-            }
-        }
-
-        // Generate sales ID
-        new_sale.sales_id = generate_sales_id();
-
-        // Append to file
+        Sale new_sale = get_sale_input();
         append_to_sales_file(filename, new_sale);
-        std::cout << "Record added successfully to " << filename << "\n";
+        std::cout << "Record added successfully.\n";
 
-        // Ask to continue
         std::cout << "Do you want to enter another record? (y/n): ";
         std::getline(std::cin, choice);
-
     } while (choice == "y" || choice == "Y");
 
-    // Ask if user wants to make any changes
-    std::string edit_choice;
+    // Step 2: Ask if any updates are needed
+    std::string update_choice;
     std::cout << "Do you want to make any changes in the inputs? (y/n): ";
-    std::getline(std::cin, edit_choice);
+    std::getline(std::cin, update_choice);
 
-    if (edit_choice == "n" || edit_choice == "N") {
-        std::vector<Sale> sales = read_sales_file(filename);
+    std::vector<Sale> all_sales = read_sales_file(filename);
 
-        // Sort the sales by date (lexicographically works for YYYY-MM-DD)
-        std::sort(sales.begin(), sales.end(), [](const Sale& a, const Sale& b) {
-            return a.date < b.date;
-        });
+    if (update_choice == "y" || update_choice == "Y") {
+        std::string target_id;
+        std::cout << "Enter the Sales ID to update: ";
+        std::getline(std::cin, target_id);
 
-        // Write to temp.csv (create if doesn't exist)
-        const std::string temp_filename = "temp.csv";
-        write_sorted_sales(sales, temp_filename);
-        std::cout << "Sorted data written to " << temp_filename << "\n";
-    } else {
-        std::cout << "Please update your inputs and run the program again.\n";
+        bool found = false;
+        for (auto& sale : all_sales) {
+            if (sale.sales_id == target_id) {
+                std::cout << "Enter new details for Sales ID " << target_id << ":\n";
+                sale = get_sale_input(target_id);  // Keep the same Sales ID
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            write_sales_to_file(filename, all_sales);
+            std::cout << "Sales ID " << target_id << " updated successfully in " << filename << "\n";
+        } else {
+            std::cerr << "Sales ID not found!\n";
+        }
     }
+
+    // Step 3: Sort all and write to temp.csv
+    sort_and_save_temp(all_sales);
 
     std::cout << "Program completed.\n";
     return 0;
