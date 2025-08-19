@@ -26,7 +26,6 @@ std::string generate_sales_id() {
 // Validate DD/MM/YYYY format and year range
 bool valid_date_format(const std::string& date) {
     if (date.length() != 10 || date[2] != '/' || date[5] != '/') return false;
-
     std::string day_str = date.substr(0, 2);
     std::string month_str = date.substr(3, 2);
     std::string year_str = date.substr(6, 4);
@@ -39,18 +38,15 @@ bool valid_date_format(const std::string& date) {
     int day = std::stoi(day_str);
     int month = std::stoi(month_str);
     int year = std::stoi(year_str);
-
     if (year < 1950 || year > 2050) return false;
     if (month < 1 || month > 12) return false;
-
     int max_day[] = {31,28,31,30,31,30,31,31,30,31,30,31};
     if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
         max_day[1] = 29;
-
     return day >= 1 && day <= max_day[month - 1];
 }
 
-// Convert date from DD/MM/YYYY to YYYY-MM-DD (for sorting and report)
+// Convert date from DD/MM/YYYY to YYYY-MM-DD (for sorting)
 std::string convert_date_format(const std::string& date) {
     // date format: DD/MM/YYYY
     std::string day = date.substr(0,2);
@@ -110,7 +106,6 @@ void write_sales_to_file(const std::string& filename, const std::vector<Sale>& s
 Sale get_sale_input(const std::string& sales_id = "") {
     Sale new_sale;
     std::string input;
-
     while (true) {
         std::cout << "Enter date (DD/MM/YYYY): ";
         std::getline(std::cin, new_sale.date);
@@ -149,7 +144,6 @@ Sale get_sale_input(const std::string& sales_id = "") {
 
 void sort_and_save_temp(const std::vector<Sale>& sales) {
     std::vector<Sale> sorted = sales;
-
     std::sort(sorted.begin(), sorted.end(), [](const Sale& a, const Sale& b) {
         auto to_date_num = [](const std::string& d) {
             int day = std::stoi(d.substr(0, 2));
@@ -173,14 +167,12 @@ std::string get_today_date() {
     return oss.str();
 }
 
-
 void generate_report(const std::vector<Sale>& sales) {
     std::ofstream report("report.txt");
     if (!report) {
         std::cerr << "Error opening report.txt for writing.\n";
         return;
     }
-
     report << "Date: " << get_today_date() << "\n";
     report << "Sales Report : Stationary Items Sold\n\n";
 
@@ -217,14 +209,12 @@ void generate_report(const std::vector<Sale>& sales) {
         report << "\n" << line_sep << "\n\n";
         report << std::setw(70) << " " << "Subtotal for " << date << " is :" << subtotal << "\n\n";
         report << line_sep << "\n\n";
-
         grand_total += subtotal;
     }
 
     report << std::setw(70) << " " << "GRAND TOTAL is : " << grand_total << "\n\n";
     report << "Submission\n";
     report << "End of Report\n";
-
     report.close();
     std::cout << "Report generated successfully in report.txt\n";
 }
@@ -253,7 +243,6 @@ int main() {
     std::string update_choice;
     std::cout << "Do you want to make any changes in the inputs? (y/n): ";
     std::getline(std::cin, update_choice);
-
     if (update_choice == "y" || update_choice == "Y") {
         std::string target_id;
         std::cout << "Enter the Sales ID to update: ";
@@ -298,7 +287,6 @@ int main() {
             std::cerr << "Sales ID not found.\n";
         }
     }
-
     sort_and_save_temp(all_sales);
 
     // Generate report.txt after all operations
